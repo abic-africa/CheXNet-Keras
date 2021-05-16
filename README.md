@@ -1,4 +1,4 @@
-#DELAX-TB
+# DELAX-TB
 DELAX-TB is a deep learning tool and architecture for detection of TB in x-ray scans. It's based on CheXnet and the source is based off of  Bruce Chou's work at https://github.com/brucechou1983/CheXNet-Keras 
 
 Refer to the README at https://github.com/brucechou1983/CheXNet-Keras for the initial setup.
