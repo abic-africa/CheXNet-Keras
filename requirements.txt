@@ -9,3 +9,5 @@ tensorflow-gpu==1.4.1
 Pillow==5.0.0
 scikit-image==0.13.1
 imgaug==0.2.5
+tensorflowjs[wizard]
+tfkerassurgeon

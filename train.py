@@ -1,6 +1,7 @@
 import json
 import shutil
 import os
+import sys
 import pickle
 from callback import MultipleClassAUROC, MultiGPUModelCheckpoint
 from configparser import ConfigParser
@@ -12,7 +13,8 @@ from models.keras import ModelFactory
 from utility import get_sample_counts
 from weights import get_class_weights
 from augmenter import augmenter
-
+import keras
+from kerassurgeon.operations import delete_layer, insert_layer, replace_layer
 
 def main():
     # parser config
@@ -137,9 +139,37 @@ def main():
         if show_model_summary:
             print(model.summary())
 
+        #tb predction 
+        tb_prediction_layer = keras.layers.Dense(3)
+        
+        #get number of layers in the model
+        num_layers = len(model.layers)
+        
+        #insert tb_prediction_layer before last layer 
+        model = replace_layer(model, model.layers[num_layers-1], tb_prediction_layer)
+        #print(model.summary())
+        
+        #print("layers: {}".format(len(model.layers)))
+
+        ####################
+        #Delax-TB
+        #########################
+        class_names = ['tb','doubt', 'normal']
+        train_counts, train_pos_counts = get_sample_counts(output_dir, "train_nera", class_names)
+        dev_counts, _ = get_sample_counts(output_dir, "val_nera", class_names)
+        
+        batch_size=1
+        epochs=1
+        train_steps = int(train_counts / batch_size)
+        validation_steps = int(dev_counts / batch_size)
+        
+        output_weights_name = "nera_weights.h5"
+        ###############################
+        
+        
         print("** create image generators **")
         train_sequence = AugmentedImageSequence(
-            dataset_csv_file=os.path.join(output_dir, "train.csv"),
+            dataset_csv_file=os.path.join(output_dir, "train_nera.csv"),
             class_names=class_names,
             source_image_dir=image_source_dir,
             batch_size=batch_size,
@@ -147,8 +177,9 @@ def main():
             augmenter=augmenter,
             steps=train_steps,
         )
+
         validation_sequence = AugmentedImageSequence(
-            dataset_csv_file=os.path.join(output_dir, "dev.csv"),
+            dataset_csv_file=os.path.join(output_dir, "val_nera.csv"),
             class_names=class_names,
             source_image_dir=image_source_dir,
             batch_size=batch_size,
@@ -199,18 +230,18 @@ def main():
         ]
 
         print("** start training **")
-        history = model_train.fit_generator(
-            generator=train_sequence,
-            steps_per_epoch=train_steps,
+        history = model_train.fit(
+            x=train_sequence,
+            #steps_per_epoch=train_steps,
             epochs=epochs,
             validation_data=validation_sequence,
             validation_steps=validation_steps,
             callbacks=callbacks,
-            class_weight=class_weights,
-            workers=generator_workers,
+            #class_weight=class_weights,
+            #workers=generator_workers,
             shuffle=False,
         )
-
+        
         # dump history
         print("** dump history **")
         with open(os.path.join(output_dir, "history.pkl"), "wb") as f:
@@ -219,7 +250,12 @@ def main():
                 "auroc": auroc.aurocs,
             }, f)
         print("** done! **")
-
+        
+        #save model 
+        print("** Saving model **")
+        model.save('chexnet_model.h5')
+        print("** done! **")
+        
     finally:
         os.remove(running_flag_file)
 

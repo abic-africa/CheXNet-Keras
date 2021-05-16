@@ -56,12 +56,14 @@ class AugmentedImageSequence(Sequence):
     def load_image(self, image_file):
         image_path = os.path.join(self.source_image_dir, image_file)
         image = Image.open(image_path)
+        width, height = image.size
         image_array = np.asarray(image.convert("RGB"))
         image_array = image_array / 255.
         image_array = resize(image_array, self.target_size)
         return image_array
 
     def transform_batch_images(self, batch_x):
+        # Normalize images 
         if self.augmenter is not None:
             batch_x = self.augmenter.augment_images(batch_x)
         imagenet_mean = np.array([0.485, 0.456, 0.406])
@@ -83,7 +85,7 @@ class AugmentedImageSequence(Sequence):
 
     def prepare_dataset(self):
         df = self.dataset_df.sample(frac=1., random_state=self.random_state)
-        self.x_path, self.y = df["Image Index"].as_matrix(), df[self.class_names].as_matrix()
+        self.x_path, self.y = df["Image Index"].values, df[self.class_names].values
 
     def on_epoch_end(self):
         if self.shuffle:
